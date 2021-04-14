@@ -7,7 +7,7 @@ from django.core.validators import RegexValidator
 import os
 from rest_framework.exceptions import AuthenticationFailed
 from .models import CustomUser
-
+from rest_framework_simplejwt.tokens import RefreshToken
 User = get_user_model()
 
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -90,11 +90,11 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         if user:
             raise serializers.ValidationError("username with this phone number is already taken")
         return value
-    # def validate_email(self, value):
-    #     user = CustomUser.objects.filter(email='email')
-    #     if user:
-    #         raise serializers.ValidationError("username with this email is already taken")
-    #     return BaseUserManager.normalize_email(value)
+    def validate_email(self, value):
+        user = CustomUser.objects.filter(email='email')
+        if user:
+            raise serializers.ValidationError("username with this email is already taken")
+        return BaseUserManager.normalize_email(value)
 
     def validate_password(self, value):
         password_validation.validate_password(value)
@@ -105,26 +105,9 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         user = User(**validated_data)
         user.set_password(validated_data['password'])
         user.save()
-        # print(user,"##################")
         user.save()
         
         return user
-
-    # def create(self, validated_data):
-        # user = CustomUser.objects.create(
-        #     username=validated_data['username'],
-        #     email=validated_data['email'],
-        #     full_name=validated_data['full_name'],
-        #     photo=validated_data['photo'],
-        #     phone = validated_data['phone'],
-        #     country_code=validated_data['country_code']
-        # )
-
-        
-        # user.set_password(validated_data['password'])
-        # user.save()
-
-        # return user
 
 class UpdateUserSerializer(serializers.ModelSerializer):
 
@@ -160,6 +143,20 @@ class UpdateUserSerializer(serializers.ModelSerializer):
 
         return instance
 
+
+
+
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+    def validate(self, attrs):
+        self.token = attrs['refresh']
+        return attrs
+
+    def save(self, **kwargs):
+        try:
+            RefreshToken(self.token).blacklist()
+        except TokenError:
+            self.fail('Bad Token')
 
 class PhoneOtpGenerate(serializers.Serializer):
     phone_regex  = RegexValidator(regex=r'^\d{9,12}$', message="phone_number ,must enter in format +999999999 upto 10 digits")

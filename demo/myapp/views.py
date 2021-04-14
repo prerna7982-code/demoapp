@@ -18,6 +18,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.authentication import BasicAuthentication
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken,BlacklistedToken
+from drf_yasg.utils import swagger_auto_schema
+
 User = get_user_model()
 
 r = redis.Redis(host='127.0.0.1',port=6379, db=0)
@@ -47,32 +49,18 @@ class UserDetailView(generics.ListAPIView):
 	serializer_class = AuthUserSerializer
 
 
-class UserLogout(APIView):
+class UserLogout(generics.GenericAPIView):
 	authentication_classes = [JWTAuthentication]
 	parser_classes = (FormParser, MultiPartParser)
 	permission_classes = (IsAuthenticated,)
+	serializer_class = LogoutSerializer
 
-	def post(self, request):
-		try:
-			refresh_token = request.data["refresh_token"]
-			token = RefreshToken(refresh_token)
-			token.blacklist()
+	def post(self,request):
+		serializer = self.serializer_class(data=request.data)
+		serializer.is_valid(raise_exception=True)
+		serializer.save()
 
-			return Response(status=status.HTTP_205_RESET_CONTENT)
-		except Exception as e:
-			return Response(status=status.HTTP_400_BAD_REQUEST)
-
-
-class LogoutAllView(APIView):
-	authentication_classes = [BasicAuthentication]
-	permission_classes = (IsAuthenticated,)
-
-	def post(self, request):
-		tokens = OutstandingToken.objects.filter(user_id=request.user.id)
-		for token in tokens:
-			t, _ = BlacklistedToken.objects.get_or_create(token=token)
-
-		return Response(status=status.HTTP_205_RESET_CONTENT)
+		return Response(data = {"message":"successfully logged out"},status=status.HTTP_204_NO_CONTENT)
 
 
 
@@ -83,32 +71,8 @@ class ChangePasswordView(generics.UpdateAPIView):
 	permission_classes = (IsAuthenticated,)
 	serializer_class = ChangePasswordSerializer
 
-# def otp_generator():
-# 	otp = random.randint(999, 9999)
-# 	return otp
-
-# def send_otp(country_code, phone):
-
-# 	if phone:
-# 		key = otp_generator()
-# 		phone = str(phone)
-# 		otp_key = str(key)
-# 		account_sid = "ACda91193706211de6d43849548a2d3293"
-# 		auth_token  = "b7c61e721d747dfdb6d08d21c7c87916"
-# 		client = Client(account_sid, auth_token)
-# 		try:
-# 			message = client.messages.create(
-# 					to='+'+str(country_code)+str(phone), 
-# 					from_="+12053080842",
-# 					body= otp_key)
-# 			return otp_key
-# 		except Exception as e:
-# 			return False
-
-
-
 class ValidatePhoneSendOTP(generics.CreateAPIView):
-	authentication_classes = [BasicAuthentication]
+	authentication_classes = [JWTAuthentication]
 	parser_classes = (FormParser, MultiPartParser)
 	serializer_class = PhoneOtpGenerate
 	permission_classes = [IsAuthenticated]
@@ -141,7 +105,7 @@ class ValidatePhoneSendOTP(generics.CreateAPIView):
 
 
 class ValidateOTPView(generics.CreateAPIView):
-	authentication_classes = [BasicAuthentication]
+	authentication_classes = [JWTAuthentication]
 	permission_classes = [IsAuthenticated]
 	parser_classes = (FormParser, MultiPartParser)
 	serializer_class = ValidateOTP
@@ -185,6 +149,7 @@ class ValidateOTPView(generics.CreateAPIView):
 
 
 class UpdateProfileView(generics.UpdateAPIView):
+	authentication_classes = [JWTAuthentication]
 	parser_classes = (FormParser, MultiPartParser)
 	queryset = User.objects.all()
 	permission_classes = (IsAuthenticated,)
@@ -197,8 +162,10 @@ from social_core.exceptions import MissingBackend, AuthTokenError, AuthForbidden
  
 class SocialLoginView(generics.GenericAPIView):
 	"""Log in using facebook"""
+	parser_classes = (FormParser, MultiPartParser)
 	serializer_class = SocialSerializer
-	permission_classes = [AllowAny]
+	authentication_classes = [JWTAuthentication]
+	permission_classes = [IsAuthenticated]
  
 	def post(self, request):
 		"""Authenticate user through the provider and access_token"""
