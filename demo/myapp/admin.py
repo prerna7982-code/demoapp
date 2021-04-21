@@ -22,3 +22,4 @@ class UserAdmin(BaseUserAdmin):
     list_display = ('username', 'full_name','email',)
     search_fields = ('username', 'full_name','email')
     ordering = ('username','email')
+

@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/3.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
-
+import os
 from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'myapp',
     'oauth2_provider',
     'social_django',
-    'rest_framework_social_oauth2',
+    # 'rest_framework_social_oauth2',
     'rest_framework_simplejwt.token_blacklist',
     'drf_yasg',
 ]
@@ -86,10 +86,16 @@ WSGI_APPLICATION = 'demo.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.path.join(BASE_DIR , 'db.sqlite3'),
     }
 }
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'djongo',
+#         'NAME': 'demodatabase',
+#     }
+# }
 AUTH_USER_MODEL = 'myapp.CustomUser'
 
 REST_FRAMEWORK = {
@@ -98,17 +104,17 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
-        'rest_framework_social_oauth2.authentication.SocialAuthentication',
+        # 'rest_framework_social_oauth2.authentication.SocialAuthentication',
     ]
 }
 
 from datetime import timedelta
 
 SIMPLE_JWT ={
-    'ACCESS_TOKEN_LIFETIME':timedelta(minutes=1),
-    'REFRESH_TOKEN_LIFETIME': timedelta(minutes=5),
+    'ACCESS_TOKEN_LIFETIME':timedelta(minutes=10),
+    'REFRESH_TOKEN_LIFETIME': timedelta(minutes=15),
     'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': False
+    'BLACKLIST_AFTER_ROTATION': True
 }
 
 
@@ -162,7 +168,7 @@ AUTHENTICATION_BACKENDS = (
     'social_core.backends.facebook.FacebookOAuth2',
 
     # django-rest-framework-social-oauth2
-    'rest_framework_social_oauth2.backends.DjangoOAuth2',
+    # 'rest_framework_social_oauth2.backends.DjangoOAuth2',
 
     # Django
     'django.contrib.auth.backends.ModelBackend',

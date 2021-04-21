@@ -19,6 +19,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.authentication import BasicAuthentication
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken,BlacklistedToken
 from drf_yasg.utils import swagger_auto_schema
+from urllib.error import HTTPError
 
 User = get_user_model()
 
@@ -31,6 +32,18 @@ class MyObtainTokenPairView(TokenObtainPairView):
 	parser_classes = (FormParser, MultiPartParser)
 	permission_classes = (IsAuthenticated,)
 	serializer_class = MyTokenObtainPairSerializer
+
+class LoginApiView(generics.GenericAPIView):
+	authentication_classes = [JWTAuthentication]
+	parser_classes = (FormParser, MultiPartParser)
+	permission_classes = (IsAuthenticated,)
+	serializer_class = UserLoginSerializer
+	def post(self,request):
+		serializer = self.serializer_class(data=request.data)
+		serializer.is_valid(raise_exception=True)
+		# serializer.save()
+
+		return Response(data = {'status':'1',"message":"successfully logged in"})
 
 
 class RegisterView(generics.CreateAPIView):
@@ -60,7 +73,7 @@ class UserLogout(generics.GenericAPIView):
 		serializer.is_valid(raise_exception=True)
 		serializer.save()
 
-		return Response(data = {"message":"successfully logged out"},status=status.HTTP_204_NO_CONTENT)
+		return Response(data = {"status":"1","message":"successfully logged out"})
 
 
 
@@ -71,11 +84,13 @@ class ChangePasswordView(generics.UpdateAPIView):
 	permission_classes = (IsAuthenticated,)
 	serializer_class = ChangePasswordSerializer
 
+import twilio
+
 class ValidatePhoneSendOTP(generics.CreateAPIView):
-	authentication_classes = [JWTAuthentication]
+	# authentication_classes = [JWTAuthentication]
 	parser_classes = (FormParser, MultiPartParser)
 	serializer_class = PhoneOtpGenerate
-	permission_classes = [IsAuthenticated]
+	permission_classes = [AllowAny]
 	def post(self, request, *args, **kwargs):
 		serializer = self.get_serializer(data=request.data)
 
@@ -85,22 +100,26 @@ class ValidatePhoneSendOTP(generics.CreateAPIView):
 			if country_code and phone_number:
 				country_code = str(country_code)
 				phone = str(phone_number)
-				otp = send_otp(country_code,phone) 
-				if otp:
-					user_otp = r.set(phone,otp,120)
+				try:
+					otp = send_otp(country_code,phone)
+					try:
+						user_otp = r.set(phone,otp,120)
+					except HTTPError as error:
+						return Response({
+							"error": {
+								"details": str(error)
+							}})
 					otp_new = str(otp)
 					count = 0
 					return Response({'status':1,'response_data':{
 					'message': "otp created", 
 					'otp' : otp_new
 						}})
-				else:
-					return Response({'status':1,'response_data':{
-					'error':{
-							'error_code' : 9, 
-							'error_mess' : error_codes[9]
-						}}
-					})
+				except HTTPError as error:
+					return Response({
+						"error": {
+							"details": str(error)
+						}})
 
 
 
@@ -164,7 +183,7 @@ class SocialLoginView(generics.GenericAPIView):
 	"""Log in using facebook"""
 	parser_classes = (FormParser, MultiPartParser)
 	serializer_class = SocialSerializer
-	authentication_classes = [JWTAuthentication]
+	authentication_classes = [BasicAuthentication]
 	permission_classes = [IsAuthenticated]
  
 	def post(self, request):
@@ -229,4 +248,3 @@ class SocialLoginView(generics.GenericAPIView):
 				"token": data.get('token')
 			}
 			return Response(status=status.HTTP_200_OK, data=response)
-

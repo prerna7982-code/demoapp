@@ -53,9 +53,13 @@ class ChangePasswordSerializer(serializers.ModelSerializer):
 
 
 class UserLoginSerializer(serializers.Serializer):
+    access_token = serializers.CharField(max_length=255, required=True)
     username = serializers.CharField(max_length=255, required=True)
     email = serializers.CharField(max_length=255, required=False)
     password = serializers.CharField(required=True, write_only=True)
+    def validate(self, attrs):
+        self.token = attrs['access_token']
+        return attrs
 
 
 
@@ -104,9 +108,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         
         user = User(**validated_data)
         user.set_password(validated_data['password'])
-        user.save()
-        user.save()
-        
+        user.save()        
         return user
 
 class UpdateUserSerializer(serializers.ModelSerializer):
@@ -145,6 +147,7 @@ class UpdateUserSerializer(serializers.ModelSerializer):
 
 
 
+import tokenize 
 
 class LogoutSerializer(serializers.Serializer):
     refresh = serializers.CharField()
@@ -155,8 +158,9 @@ class LogoutSerializer(serializers.Serializer):
     def save(self, **kwargs):
         try:
             RefreshToken(self.token).blacklist()
-        except TokenError:
-            self.fail('Bad Token')
+        except:
+            raise serializers.ValidationError("Bad token")
+            # self.fail('Bad Token')
 
 class PhoneOtpGenerate(serializers.Serializer):
     phone_regex  = RegexValidator(regex=r'^\d{9,12}$', message="phone_number ,must enter in format +999999999 upto 10 digits")
